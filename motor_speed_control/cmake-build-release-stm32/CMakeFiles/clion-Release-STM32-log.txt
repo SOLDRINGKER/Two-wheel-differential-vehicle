@@ -1,0 +1,5 @@
+E:\STM32CubeCLT_1.18.0\CMake\bin\cmake.exe -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=E:/STM32CubeCLT_1.18.0/Ninja/bin/ninja.exe -DCMAKE_C_COMPILER=E:/STM32CubeCLT_1.18.0/GNU-tools-for-STM32/bin/arm-none-eabi-gcc.exe -DCMAKE_CXX_COMPILER=E:/STM32CubeCLT_1.18.0/GNU-tools-for-STM32/bin/arm-none-eabi-g++.exe -G Ninja -S E:\2Dyuntai\motor_speed_control -B E:\2Dyuntai\motor_speed_control\cmake-build-release-stm32
+-- Maximum optimization for speed
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: E:/2Dyuntai/motor_speed_control/cmake-build-release-stm32
