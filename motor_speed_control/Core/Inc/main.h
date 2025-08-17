@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+extern  char OledString[50];
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

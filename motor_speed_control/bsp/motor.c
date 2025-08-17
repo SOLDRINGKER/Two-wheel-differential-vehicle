@@ -1,5 +1,51 @@
 #include "motor.h"
 
+
+
+// 卡尔曼滤波器实例
+KalmanFilter KalmanA, KalmanB;
+
+/**
+ * 函数功能：初始化卡尔曼滤波器
+ * 入口参数：滤波器结构体指针
+ * 返回  值：无
+ */
+void Kalman_Init(KalmanFilter *filter) {
+    filter->x = 0;         // 初始速度估计: 0 m/s
+    filter->P = 1.0f;      // 初始估计误差较高
+    filter->Q = 0.001f;    // 过程噪声(速度变化)
+    filter->R = 0.05f;     // 测量噪声(编码器噪声)
+    filter->K = 0;         // 初始卡尔曼增益
+}
+
+/**
+ * 函数功能：更新卡尔曼滤波器
+ * 入口参数：滤波器结构体指针，新测量值
+ * 返回  值：滤波后的估计值
+ */
+float Kalman_Update(KalmanFilter *filter, float measurement) {
+    // 预测步骤
+    // (无状态模型更新，因为我们假设速度在两次更新之间基本保持不变)
+    filter->P = filter->P + filter->Q;
+
+    // 更新步骤
+    filter->K = filter->P / (filter->P + filter->R);
+    filter->x = filter->x + filter->K * (measurement - filter->x);
+    filter->P = (1 - filter->K) * filter->P;
+
+    return filter->x;
+}
+
+/**
+ * 函数功能：初始化所有卡尔曼滤波器
+ * 入口参数：无
+ * 返回  值：无
+ */
+void Kalman_Filter_Init(void) {
+    Kalman_Init(&KalmanA);
+    Kalman_Init(&KalmanB);
+}
+
 /**
  * 函数功能：读取电机A编码器并计算实际速度
  * 入口参数：无
@@ -19,14 +65,17 @@ float Calculate_Motor_A_Speed(void)
     TIM2->CNT = 0;
 
     // 3. 计算实际速度(m/s)
-    float speed = encoder_value * control_frequency * wheel_perimeter / encoder_precision;
+    float raw_speed = encoder_value * control_frequency * wheel_perimeter / encoder_precision;
+
+    // 4. 应用卡尔曼滤波
+    float filtered_speed = Kalman_Update(&KalmanA, raw_speed);
 
     // 4. 速度限幅 - 防止异常值
     float max_speed = 0.1f;  // 最大速度限制为0.1m/s
-    if(speed > max_speed) speed = max_speed;
-    if(speed < -max_speed) speed = -max_speed;
+    if(filtered_speed > max_speed) filtered_speed = max_speed;
+    if(filtered_speed < -max_speed) filtered_speed = -max_speed;
 
-    return speed;
+    return filtered_speed;
 }
 
 /**
@@ -51,14 +100,17 @@ float Calculate_Motor_B_Speed(void)
     encoder_value = -encoder_value;  // 右轮需要取反
 
     // 4. 计算实际速度(m/s)
-    float speed = encoder_value * control_frequency * wheel_perimeter / encoder_precision;
+    float raw_speed = encoder_value * control_frequency * wheel_perimeter / encoder_precision;
+
+     // 5. 应用卡尔曼滤波
+    float filtered_speed = Kalman_Update(&KalmanB, raw_speed);
 
     // 5. 速度限幅 - 防止异常值
     float max_speed = 0.1f;  // 最大速度限制为0.1m/s
-    if(speed > max_speed) speed = max_speed;
-    if(speed < -max_speed) speed = -max_speed;
+    if(filtered_speed > max_speed) filtered_speed = max_speed;
+    if(filtered_speed < -max_speed) filtered_speed = -max_speed;
 
-    return speed;
+    return filtered_speed;
 }
 
 /**
@@ -69,8 +121,8 @@ float Calculate_Motor_B_Speed(void)
 int Incremental_PI_A(float Encoder, float Target)
 {
     static float Bias, Pwm, Last_bias;
-    static float Velocity_KP = 300.0f;  // 电机A的PI参数Kp
-    static float Velocity_KI = 300.0f;  // 电机A的PI参数Ki
+    static float Velocity_KP = 500.0f;  // 电机A的PI参数Kp
+    static float Velocity_KI = 500.0f;  // 电机A的PI参数Ki
 
     Bias = Target - Encoder;  // 计算偏差
     Pwm += Velocity_KP * (Bias - Last_bias) + Velocity_KI * Bias; // PI控制器
@@ -91,8 +143,8 @@ int Incremental_PI_A(float Encoder, float Target)
 int Incremental_PI_B(float Encoder, float Target)
 {
     static float Bias, Pwm, Last_bias;
-    static float Velocity_KP = 300.0f;  // 电机B的PI参数Kp
-    static float Velocity_KI = 300.0f;  // 电机B的PI参数Ki
+    static float Velocity_KP = 500.0f;  // 电机B的PI参数Kp
+    static float Velocity_KI = 500.0f;  // 电机B的PI参数Ki
 
     Bias = Target - Encoder;  // 计算偏差
     Pwm += Velocity_KP * (Bias - Last_bias) + Velocity_KI * Bias; // PI控制器

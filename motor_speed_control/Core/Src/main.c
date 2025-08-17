@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include "motor.h"
 #include "interrupt.h"
+#include "speed_planning.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,6 +101,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   OLED_Init();
   delay_init();
+  Kalman_Filter_Init();
+  S_Curve_Init(&Left_Wheel_Planner, 0.0f, 0.0f, 30.0f);
+  S_Curve_Init(&Right_Wheel_Planner, 0.0f, 0.0f, 30.0f);
   HAL_TIM_Base_Start_IT(&htim5);
   HAL_TIM_Encoder_Start(&htim2,TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim4,TIM_CHANNEL_ALL);
@@ -111,13 +115,33 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    static uint8_t target_state = 0; // 目标状态：0表示目标为0.00，1表示目标为0.05
 
-    // 显示A电机速度在第一行
-    sprintf((char*)OledString, "Va:%.2f m/s", speed_a);
+    // 检查两个电机是否都达到了目标速度
+    if(Left_Wheel_Planner.target_reached && Right_Wheel_Planner.target_reached)
+    {
+      // 切换目标速度
+      if(target_state == 0)
+      {
+        Set_Target_Speed_Smooth(0.10f, 0.10f);
+        target_state = 1;
+      }
+      else
+      {
+        Set_Target_Speed_Smooth(0.00f, 0.00f);
+        target_state = 0;
+      }
+    }
+
+    // 显示速度信息
+    char OledString[20];
+    sprintf((char*)OledString, "Va:%.2fm/s", speed_a, target_a);
     OLED_ShowString(0, 0, (unsigned char*)OledString);
-    // 显示B电机速度在第二行
-    sprintf((char*)OledString, "Vb:%.2f m/s", speed_b);
-    OLED_ShowString(0, 3, (unsigned char*)OledString);
+
+    sprintf((char*)OledString, "Vb:%.2fm/s", speed_b, target_b);
+    OLED_ShowString(0, 2, (unsigned char*)OledString);
+
+    HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
